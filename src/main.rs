@@ -1,41 +1,37 @@
-use futures::StreamExt;
+use ethers::{
+	contract::{abigen, Contract},
+	core::types::{BlockNumber, ValueOrArray, H160},
+	providers::{Provider, StreamExt, Ws},
+};
+
+use std::sync::Arc;
+
+const WEBSOCKET_INFURA_ENDPOINT: &str =
+	"wss://mainnet.infura.io/ws/v3/6084046c97ed4b93a167b6bd33cc309e";
+
+const CONTRACT_ADDRESS: &str = "5777d92f208679db4b9778590fa3cab3ac9e2168";
+
+async fn get_client() -> Provider<Ws> {
+	Provider::<Ws>::connect(WEBSOCKET_INFURA_ENDPOINT).await.unwrap()
+}
+
+abigen!(Swap, "./src/contracts/uniswap_pool_abi.json");
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-	const WEBSOCKET_INFURA_ENDPOINT: &str = "<YOUR OWN INFURA ENDPOINT>";
+	let client = Arc::new(get_client().await);
 
-	let web3 =
-		web3::Web3::new(web3::transports::ws::WebSocket::new(WEBSOCKET_INFURA_ENDPOINT).await?);
-	let contract_address = web3::types::H160::from_slice(
-		&hex::decode("5777d92f208679db4b9778590fa3cab3ac9e2168").unwrap()[..],
-	);
-	let contract = web3::contract::Contract::from_json(
-		web3.eth(),
-		contract_address,
-		include_bytes!("contracts/uniswap_pool_abi.json"),
-	)?;
-	let swap_event = contract.abi().events_by_name("Swap")?.first().unwrap();
-	let swap_event_signature = swap_event.signature();
+	let contract_address = H160::from_slice(&hex::decode(CONTRACT_ADDRESS).unwrap()[..]);
 
-	let mut block_stream = web3.eth_subscribe().subscribe_new_heads().await?;
+	let event = Contract::event_of_type::<SwapFilter>(client)
+		.address(ValueOrArray::from(contract_address))
+		.from_block(BlockNumber::Latest);
 
-	while let Some(Ok(block)) = block_stream.next().await {
-		let swap_logs_in_block = web3
-			.eth()
-			.logs(
-				web3::types::FilterBuilder::default()
-					.block_hash(block.hash.unwrap())
-					.address(vec![contract_address])
-					.topics(Some(vec![swap_event_signature]), None, None, None)
-					.build(),
-			)
-			.await?;
+	let mut stream = event.subscribe_with_meta().await?;
 
-		for log in swap_logs_in_block {
-			let parsed_log = swap_event
-				.parse_log(web3::ethabi::RawLog { topics: log.topics, data: log.data.0 })?;
-			println!("{:?}", parsed_log);
-		}
+	while let Some(Ok((log, meta))) = stream.next().await {
+		println!("{log:?}");
+		println!("{meta:?}")
 	}
 
 	Ok(())
