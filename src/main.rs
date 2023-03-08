@@ -1,11 +1,10 @@
 use ethers::{
-	contract::{abigen, Contract},
-	core::types::{BlockNumber, Filter, Log, ValueOrArray, H160},
-	prelude::FilterWatcher,
-	providers::{Middleware, Provider, StreamExt, Ws},
-	utils::format_units,
+	contract::Contract,
+	core::types::{BlockNumber, Filter, ValueOrArray, H160},
+	providers::{Middleware, StreamExt},
 };
 use std::sync::Arc;
+use uniswap::{log_transaction, reorganization, reorganization::ReorganizationState};
 
 const CONTRACT_ADDRESS: &str = "5777d92f208679db4b9778590fa3cab3ac9e2168";
 
@@ -25,7 +24,11 @@ async fn main() -> Result<(), anyhow::Error> {
 		let filter = Filter::new().from_block(meta.block_number);
 		let filter_stream = client.watch(&filter).await?;
 
-		uniswap::safe_reorganization(filter_stream, &log).await
+		match reorganization::safe_reorganization(filter_stream).await {
+			ReorganizationState::BlockRemoved => continue,
+			ReorganizationState::BlockSafe => log_transaction(&log),
+			ReorganizationState::Error => panic!("reorganization error!!!"),
+		}
 	}
 
 	Ok(())
