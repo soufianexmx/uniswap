@@ -29,9 +29,28 @@ async fn main() -> Result<(), anyhow::Error> {
 
 	let mut stream = event.subscribe_with_meta().await?;
 
-	while let Some(Ok((log, meta))) = stream.next().await {
-		println!("{log:?}");
-		println!("{meta:?}")
+	while let Some(Ok((log, _))) = stream.next().await {
+		if log.amount_0.is_positive() && log.amount_1.is_positive() {
+			panic!("Swap amounts are both positive, no direction!!!");
+		} else {
+			if log.amount_0.is_positive() {
+				println!(
+					"{} : {} DAI -> {} USDC : {}",
+					log.sender,
+					log.amount_0,
+					log.amount_1.abs(),
+					log.recipient
+				);
+			} else {
+				println!(
+					"{} : {} USDC -> {} DAI : {}",
+					log.sender,
+					log.amount_1,
+					log.amount_0.abs(),
+					log.recipient
+				);
+			}
+		}
 	}
 
 	Ok(())
