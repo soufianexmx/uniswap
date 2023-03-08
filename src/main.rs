@@ -12,6 +12,8 @@ const WEBSOCKET_INFURA_ENDPOINT: &str =
 
 const CONTRACT_ADDRESS: &str = "5777d92f208679db4b9778590fa3cab3ac9e2168";
 
+const REORGANIZATION_DEPTH: u8 = 6;
+
 async fn get_client() -> Provider<Ws> {
 	Provider::<Ws>::connect(WEBSOCKET_INFURA_ENDPOINT).await.unwrap()
 }
@@ -34,7 +36,7 @@ fn log_transaction(log: &SwapFilter) {
 }
 
 async fn safe_reorganization(mut stream: FilterWatcher<'_, Ws, Log>, log: &SwapFilter) {
-	for n in 0..=6 {
+	for n in 0..=REORGANIZATION_DEPTH {
 		let block_log = stream.next().await.expect("coultdn't poll filterChange stream!!!");
 
 		if block_log.removed.expect("missing block log removed field!!!") {
