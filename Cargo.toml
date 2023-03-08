@@ -7,4 +7,4 @@ edition = "2021"
 anyhow = "1.0"
 tokio = "1.21.2"
 hex = "0.4.3"
-ethers = { version = "1.0.2", features = ["abigen", "rustls", "ws"]}
+ethers = { version = "2.0.0", features = ["abigen", "rustls", "ws"]}
