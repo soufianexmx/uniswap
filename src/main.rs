@@ -1,12 +1,10 @@
-use bigdecimal::BigDecimal;
 use ethers::{
 	contract::{abigen, Contract},
 	core::types::{BlockNumber, ValueOrArray, H160},
 	providers::{Provider, StreamExt, Ws},
+	utils::format_units,
 };
-use num_bigint::BigInt;
 
-use ethers::{abi::AbiEncode, prelude::I256};
 use std::sync::Arc;
 
 const WEBSOCKET_INFURA_ENDPOINT: &str =
@@ -16,10 +14,6 @@ const CONTRACT_ADDRESS: &str = "5777d92f208679db4b9778590fa3cab3ac9e2168";
 
 async fn get_client() -> Provider<Ws> {
 	Provider::<Ws>::connect(WEBSOCKET_INFURA_ENDPOINT).await.unwrap()
-}
-
-fn to_big_decimal(i256: I256, scale: i64) -> BigDecimal {
-	BigDecimal::new(BigInt::from_signed_bytes_be(&i256.encode()), scale)
 }
 
 abigen!(Swap, "./src/contracts/uniswap_pool_abi.json");
@@ -38,10 +32,10 @@ async fn main() -> Result<(), anyhow::Error> {
 
 	while let Some(Ok((log, _))) = stream.next().await {
 		if log.amount_0.is_positive() && log.amount_1.is_positive() {
-			panic!("Swap amounts are both positive, no direction!!!");
+			panic!("swap amounts are both positive, no direction!!!");
 		} else {
-			let dai = to_big_decimal(log.amount_0, 18).abs();
-			let usdc = to_big_decimal(log.amount_1, 6).abs();
+			let dai = format_units(log.amount_0.abs(), 18).expect("couldn't format DAI!!!");
+			let usdc = format_units(log.amount_1.abs(), 6).expect("couldn't format USDC!!!");
 
 			if log.amount_0.is_positive() {
 				println!("{} : {} DAI -> {} USDC : {}", log.sender, dai, usdc, log.recipient);
