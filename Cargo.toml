@@ -5,7 +5,8 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0"
-#futures = "0.3.14"
 tokio = "1.21.2"
 hex = "0.4.3"
 ethers = { version = "1.0.2", features = ["abigen", "rustls", "ws"]}
+num-bigint = "0.4.3"
+bigdecimal = "0.3.0"
